@@ -18,7 +18,7 @@ export const setupFavoriteRoutes = () => {
 
   router.post("/", validateToken, httpService.createFavorite.bind(httpService));
   router.delete(
-    "/:id",
+    "/:recipeId",
     validateToken,
     httpService.deleteFavorite.bind(httpService)
   );

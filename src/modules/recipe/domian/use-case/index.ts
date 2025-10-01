@@ -4,6 +4,7 @@ import { IStatsUseCase } from "../../../stats/interface";
 import { IUserUseCase } from "../../../user/interface";
 import { IRecipeRepository, IRecipeUseCase } from "../../interface";
 import {
+  ConditionDto,
   CreateRecipeDto,
   ResponseRecipeDto,
   UpdateRecipeDto,
@@ -19,6 +20,55 @@ export class RecipeUseCase implements IRecipeUseCase {
     private userUseCase: IUserUseCase
   ) {}
 
+  async topRecipeByFavorite(userId: string): Promise<any> {
+    console.log("asdasdsadasd" + userId);
+    const recipes = await this.repository.getRecipeByUserId(userId);
+    if (!recipes) {
+      return null;
+    }
+    let record: { name: string; favoriteCount: number }[] = [];
+
+    await Promise.all(
+      recipes.map(async (recipe) => {
+        const result = await this.statsUseCase.getStateByRecipeId(recipe.id!);
+        record.push({
+          name: recipe.name,
+          favoriteCount: result?.favorites || 0,
+        });
+      })
+    );
+
+    const totalFavorite = record.reduce(
+      (total, recipe) => total + recipe.favoriteCount,
+      0
+    );
+
+    const totalRecipe = record.length;
+
+    const sortRecipe = record
+      .sort((a, b) => b.favoriteCount - a.favoriteCount)
+      .slice(0, 5);
+
+    const bestRecipe = sortRecipe[0]?.name;
+
+    return { totalFavorite, totalRecipe, bestRecipe, sortRecipe };
+  }
+
+  async countRecipeByCategory(
+    category: string,
+    userId: string
+  ): Promise<number> {
+    return this.repository.countRecipeByCategory(category, userId);
+  }
+
+  async getRecipeByUserId(userId: string): Promise<ResponseRecipeDto[] | null> {
+    const recipe = await this.repository.getRecipeByUserId(userId);
+    if (!recipe) {
+      return null;
+    }
+    return recipe.map((recipe) => ResponseRecipeDto.parse(recipe));
+  }
+
   async createRecipe(
     recipe: CreateRecipeDto,
     userId: string
@@ -27,7 +77,6 @@ export class RecipeUseCase implements IRecipeUseCase {
 
     const user = await this.userUseCase.getUserById(userId);
 
-    console.log(user);
     if (!user) {
       throw new Error("User not found");
     }
@@ -35,7 +84,6 @@ export class RecipeUseCase implements IRecipeUseCase {
     if (recipeByName) {
       throw new Error("Recipe already exists");
     }
-    console.log(recipe.category);
 
     const categoryByName = await this.categoryUseCase.getCategoryByName(
       recipe.category
@@ -73,11 +121,7 @@ export class RecipeUseCase implements IRecipeUseCase {
       })
     );
 
-    console.log(listIngredient);
-
     recipe.ingredient = listIngredient;
-
-    console.log(recipe);
 
     const result = ResponseRecipeDto.parse(
       await this.repository.createRecipe(recipe, userId)
@@ -93,7 +137,9 @@ export class RecipeUseCase implements IRecipeUseCase {
     updateRecipe: UpdateRecipeDto,
     userId: string
   ): Promise<ResponseRecipeDto> {
-    const existingRecipe = await this.repository.getRecipeById(id);
+    const existingRecipe = await this.repository.getRecipeById(id, {
+      userId,
+    });
 
     if (!existingRecipe) {
       throw new Error("Recipe not found");
@@ -129,24 +175,40 @@ export class RecipeUseCase implements IRecipeUseCase {
 
     updateRecipe.ingredient = listIngredient;
 
-    return ResponseRecipeDto.parse(
+    const result = ResponseRecipeDto.parse(
       await this.repository.updateRecipe(id, updateRecipe, userId)
     );
+
+    const exsistingStats = await this.statsUseCase.getStateByRecipeId(id);
+
+    if (!exsistingStats) {
+      throw new Error("Stats not found");
+    }
+
+    await this.statsUseCase.updateRecipeId(id, result.id!);
+
+    return result;
   }
 
   async deleteRecipe(id: string): Promise<ResponseRecipeDto> {
     return ResponseRecipeDto.parse(await this.repository.deleteRecipe(id));
   }
 
-  async getRecipeById(id: string): Promise<ResponseRecipeDto> {
-    return ResponseRecipeDto.parse(await this.repository.getRecipeById(id));
+  async getRecipeById(
+    id: string,
+    cond: ConditionDto
+  ): Promise<ResponseRecipeDto> {
+    return ResponseRecipeDto.parse(
+      await this.repository.getRecipeById(id, cond)
+    );
   }
 
   async getAllRecipe(
     page: number,
-    limit: number
+    limit: number,
+    cond: ConditionDto
   ): Promise<{ recipes: ResponseRecipeDto[]; totalCount: number }> {
-    const recipes = await this.repository.getAllRecipe(page, limit);
+    const recipes = await this.repository.getAllRecipe(page, limit, cond);
     if (!recipes) {
       return { recipes: [], totalCount: 0 };
     }

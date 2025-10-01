@@ -29,6 +29,21 @@ export const setupRecipeRoutes = () => {
   const router = express.Router();
 
   router.get("/", httpService.getAllRecipe.bind(httpService));
+  router.get(
+    "/me",
+    validateToken,
+    httpService.getRecipeByUserId.bind(httpService)
+  );
+  router.get(
+    "/count/:category",
+    validateToken,
+    httpService.countRecipeByCategory.bind(httpService)
+  );
+  router.get(
+    "/top",
+    validateToken,
+    httpService.topRecipeByFavorite.bind(httpService)
+  );
   router.post("/", validateToken, httpService.createRecipe.bind(httpService));
   router.put("/:id", validateToken, httpService.updateRecipe.bind(httpService));
   router.delete(

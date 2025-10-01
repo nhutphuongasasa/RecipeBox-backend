@@ -1,5 +1,6 @@
 import { IRecipeRepository } from "../../interface";
 import {
+  ConditionDto,
   CreateRecipeDto,
   ResponseRecipeDto,
   UpdateRecipeDto,
@@ -10,14 +11,35 @@ import { PrismaClient, RecipeStatus } from "../../../../generated/prisma";
 export class RecipeRepository implements IRecipeRepository {
   constructor(private prisma: PrismaClient) {}
 
-  async getAllRecipe(
-    page: number,
-    limit: number
-  ): Promise<{ recipes: Recipe[]; totalCount: number } | null> {
-    const totalCount = await this.prisma.recipe.count();
+  async countRecipeByCategory(
+    category: string,
+    userId: string
+  ): Promise<number> {
+    const existingCategory = await this.prisma.category.findUnique({
+      where: {
+        name: category,
+      },
+    });
+
+    if (!existingCategory) {
+      throw new Error("Category not found");
+    }
+
+    const result = await this.prisma.recipe.count({
+      where: {
+        categoryId: existingCategory.id,
+        userId: userId,
+      },
+    });
+
+    return result;
+  }
+
+  async getRecipeByUserId(userId: string): Promise<ResponseRecipeDto[] | null> {
     const result = await this.prisma.recipe.findMany({
-      skip: (page - 1) * limit,
-      take: limit,
+      where: {
+        userId,
+      },
       include: {
         ingredient: {
           include: {
@@ -26,7 +48,11 @@ export class RecipeRepository implements IRecipeRepository {
         },
         step: true,
         category: true,
-        favorites: true,
+        favorites: {
+          where: {
+            ...(userId && { userId }),
+          },
+        },
       },
     });
 
@@ -52,6 +78,59 @@ export class RecipeRepository implements IRecipeRepository {
         stepTitle: step.stepTitle,
         content: step.content,
       })),
+      hasFavorites: recipe.favorites.length > 0 || false,
+    }));
+    return recipes;
+  }
+
+  async getAllRecipe(
+    page: number,
+    limit: number,
+    cond: ConditionDto
+  ): Promise<{ recipes: Recipe[]; totalCount: number } | null> {
+    const totalCount = await this.prisma.recipe.count();
+    const result = await this.prisma.recipe.findMany({
+      skip: (page - 1) * limit,
+      take: limit,
+      include: {
+        ingredient: {
+          include: {
+            ingredient: true,
+          },
+        },
+        step: true,
+        category: true,
+        favorites: {
+          where: {
+            ...(cond.userId && { userId: cond.userId }),
+          },
+        },
+      },
+    });
+
+    if (!result) {
+      return null;
+    }
+
+    const recipes = result.map((recipe) => ({
+      id: recipe.id,
+      name: recipe.name,
+      description: recipe.description,
+      image_url: recipe.image_url,
+      status: recipe.status,
+      createdAt: recipe.createdAt,
+      updatedAt: recipe.updatedAt,
+      ingredient: recipe.ingredient.map((ingredient) => ({
+        id: ingredient.id,
+        ingredientName: ingredient.ingredient.name,
+        quantity: ingredient.quantity,
+      })),
+      category: recipe.category?.name,
+      step: recipe.step.map((step) => ({
+        stepTitle: step.stepTitle,
+        content: step.content,
+      })),
+      hasFavorites: recipe.favorites.length > 0 || false,
     }));
     return { recipes, totalCount };
   }
@@ -134,68 +213,109 @@ export class RecipeRepository implements IRecipeRepository {
     });
   }
 
+  // async updateRecipe(
+  //   id: string,
+  //   recipe: UpdateRecipeDto,
+  //   userId: string
+  // ): Promise<Recipe> {
+  //   const [deletedIngredients, deletedSteps, deletedRecipe, createdRecipe] =
+  //     await this.prisma.$transaction([
+  //       this.prisma.recipe_Ingredient.deleteMany({
+  //         where: {
+  //           recipeId: id,
+  //         },
+  //       }),
+
+  //       this.prisma.step.deleteMany({
+  //         where: {
+  //           recipeId: id,
+  //         },
+  //       }),
+
+  //       this.prisma.recipe.delete({
+  //         where: {
+  //           id,
+  //         },
+  //       }),
+
+  //       this.prisma.recipe.create({
+  //         data: {
+  //           description: recipe.description,
+  //           image_url: recipe.image_url,
+  //           name: recipe.name,
+  //           status: recipe.status,
+  //           category: {
+  //             connect: {
+  //               name: recipe.category,
+  //             },
+  //           },
+  //           ingredient: {
+  //             create: recipe.ingredient.map((ingredient) => ({
+  //               ingredient: {
+  //                 connect: {
+  //                   id: ingredient.id!,
+  //                 },
+  //               },
+  //               quantity: ingredient.quantity,
+  //             })),
+  //           },
+  //           step: {
+  //             create: recipe.step.map((step) => ({
+  //               stepTitle: step.stepTitle,
+  //               content: step.content,
+  //             })),
+  //           },
+  //           user: {
+  //             connect: {
+  //               id: userId,
+  //             },
+  //           },
+  //         },
+  //       }),
+  //     ]);
+
+  //   return createdRecipe;
+  // }
   async updateRecipe(
     id: string,
     recipe: UpdateRecipeDto,
     userId: string
   ): Promise<Recipe> {
-    const [deletedIngredients, deletedSteps, deletedRecipe, createdRecipe] =
-      await this.prisma.$transaction([
-        this.prisma.recipe_Ingredient.deleteMany({
-          where: {
-            recipeId: id,
-          },
-        }),
+    return await this.prisma.$transaction(async (tx) => {
+      // Cập nhật recipe chính
+      const updatedRecipe = await tx.recipe.update({
+        where: { id },
+        data: {
+          name: recipe.name,
+          description: recipe.description,
+          image_url: recipe.image_url,
+          status: recipe.status,
+          category: { connect: { name: recipe.category } },
+        },
+      });
 
-        this.prisma.step.deleteMany({
-          where: {
-            recipeId: id,
-          },
-        }),
+      // Xóa và tạo ingredient mới
+      await tx.recipe_Ingredient.deleteMany({ where: { recipeId: id } });
+      await tx.recipe_Ingredient.createMany({
+        data: recipe.ingredient.map((i) => ({
+          recipeId: id,
+          ingredientId: i.id!,
+          quantity: i.quantity,
+        })),
+      });
 
-        this.prisma.recipe.delete({
-          where: {
-            id,
-          },
-        }),
+      // Xóa và tạo step mới
+      await tx.step.deleteMany({ where: { recipeId: id } });
+      await tx.step.createMany({
+        data: recipe.step.map((s) => ({
+          recipeId: id,
+          stepTitle: s.stepTitle,
+          content: s.content,
+        })),
+      });
 
-        this.prisma.recipe.create({
-          data: {
-            description: recipe.description,
-            image_url: recipe.image_url,
-            name: recipe.name,
-            status: recipe.status,
-            category: {
-              connect: {
-                name: recipe.category,
-              },
-            },
-            ingredient: {
-              create: recipe.ingredient.map((ingredient) => ({
-                ingredient: {
-                  connect: {
-                    id: ingredient.id!,
-                  },
-                },
-                quantity: ingredient.quantity,
-              })),
-            },
-            step: {
-              create: recipe.step.map((step) => ({
-                stepTitle: step.stepTitle,
-                content: step.content,
-              })),
-            },
-            user: {
-              connect: {
-                id: userId,
-              },
-            },
-          },
-        }),
-      ]);
-
-    return createdRecipe;
+      return updatedRecipe;
+    });
   }
 
   async deleteRecipe(id: string): Promise<Recipe> {
@@ -223,7 +343,10 @@ export class RecipeRepository implements IRecipeRepository {
     return deletedRecipe;
   }
 
-  async getRecipeById(id: string): Promise<ResponseRecipeDto | null> {
+  async getRecipeById(
+    id: string,
+    cond: ConditionDto
+  ): Promise<ResponseRecipeDto | null> {
     const result = await this.prisma.recipe.findUnique({
       where: {
         id,
@@ -237,6 +360,11 @@ export class RecipeRepository implements IRecipeRepository {
         step: true,
         category: true,
         user: true,
+        favorites: {
+          where: {
+            ...(cond.userId && { userId: cond.userId }),
+          },
+        },
       },
     });
 
@@ -252,6 +380,7 @@ export class RecipeRepository implements IRecipeRepository {
       status: result.status,
       createdAt: result.createdAt,
       updatedAt: result.updatedAt,
+      hasFavorites: result.favorites.length > 0 || false,
       ingredient: result.ingredient.map((ingredient) => ({
         id: ingredient.id,
         ingredientName: ingredient.ingredient.name,
@@ -343,8 +472,6 @@ export class RecipeRepository implements IRecipeRepository {
         ingredient: true,
       },
     });
-
-    console.log(existingIngredient);
 
     if (!existingIngredient) {
       throw new Error("Ingredient not found");

@@ -19,15 +19,19 @@ export class FavoriteHttpService {
 
   async deleteFavorite(req: Request, res: Response, next: NextFunction) {
     try {
-      const id = req.params.id;
+      const recipeId = req.params.recipeId;
+      const userId = req.id!;
 
-      if (!id) {
+      if (!recipeId) {
         return res.status(400).json({
-          message: "Invalid id",
+          message: "Invalid recipeId",
         });
       }
 
-      const favorite = await this.favoriteUseCase.deleteFavorite(id);
+      const favorite = await this.favoriteUseCase.deleteFavoriteByRecipeId(
+        recipeId,
+        userId
+      );
       res.status(200).json(favorite);
     } catch (error) {
       next(error);

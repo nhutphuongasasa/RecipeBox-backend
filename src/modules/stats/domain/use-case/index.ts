@@ -13,8 +13,12 @@ export class StatsUseCase implements IStatsUseCase {
     return ResponseStatsDto.parse(await this.repository.deleteStats(id));
   }
 
-  async getStatsById(id: string): Promise<ResponseStatsDto> {
-    return ResponseStatsDto.parse(await this.repository.getStatsById(id));
+  async getStatsById(id: string): Promise<ResponseStatsDto | null> {
+    const result = await this.repository.getStatsById(id);
+    if (!result) {
+      return null;
+    }
+    return ResponseStatsDto.parse(result);
   }
 
   async getStateByRecipeId(recipeId: string): Promise<ResponseStatsDto | null> {
@@ -67,8 +71,15 @@ export class StatsUseCase implements IStatsUseCase {
     return false;
   }
 
-  async updateFavorites(id: string, action: string): Promise<boolean> {
-    const existingStats = await this.repository.getStatsById(id);
+  async updateRecipeId(id: string, newRecipeId: string): Promise<void> {
+    await this.repository.updateRecipeId(id, newRecipeId);
+  }
+
+  async updateFavoritesByRecipeId(
+    id: string,
+    action: string
+  ): Promise<boolean> {
+    const existingStats = await this.repository.getStateByRecipeId(id);
 
     if (!existingStats) {
       throw new Error("Stats not found");

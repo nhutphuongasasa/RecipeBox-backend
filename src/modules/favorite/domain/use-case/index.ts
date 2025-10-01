@@ -17,7 +17,7 @@ export class FavoriteUseCase implements IFavoriteUseCase {
       await this.favoriteRepository.createFavorite(favorite, userId)
     );
 
-    const existingStats = await this.statsUseCase.getStatsById(
+    const existingStats = await this.statsUseCase.getStateByRecipeId(
       favorite.recipeId
     );
 
@@ -27,14 +27,20 @@ export class FavoriteUseCase implements IFavoriteUseCase {
       });
     }
 
-    await this.statsUseCase.updateFavorites(favorite.recipeId, "increment");
+    await this.statsUseCase.updateFavoritesByRecipeId(
+      favorite.recipeId,
+      "increment"
+    );
 
     return result;
   }
 
-  async deleteFavorite(id: string): Promise<ResponseFavoriteDto> {
+  async deleteFavoriteByRecipeId(
+    recipeId: string,
+    userId: string
+  ): Promise<ResponseFavoriteDto> {
     return ResponseFavoriteDto.parse(
-      await this.favoriteRepository.deleteFavorite(id)
+      await this.favoriteRepository.deleteFavoriteByRecipeId(recipeId, userId)
     );
   }
 

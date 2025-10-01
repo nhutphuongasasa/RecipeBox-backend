@@ -1,5 +1,6 @@
 import { CommentEntity } from "../../comment/domain/model/comment";
 import {
+  ConditionDto,
   CreateRecipeDto,
   ResponseRecipeDto,
   UpdateRecipeDto,
@@ -7,6 +8,8 @@ import {
 import { Recipe } from "../domian/model/recipe";
 
 export interface IRecipeUseCase {
+  topRecipeByFavorite(userId: string): Promise<any>;
+  countRecipeByCategory(category: string, userId: string): Promise<number>;
   getRecipeByName(
     name: string
   ): Promise<{ recipes: ResponseRecipeDto[]; totalCount: number }>;
@@ -14,13 +17,14 @@ export interface IRecipeUseCase {
     recipe: CreateRecipeDto,
     userId: string
   ): Promise<ResponseRecipeDto>;
+  getRecipeByUserId(userId: string): Promise<ResponseRecipeDto[] | null>;
   updateRecipe(
     id: string,
     recipe: UpdateRecipeDto,
     userId: string
   ): Promise<ResponseRecipeDto>;
   deleteRecipe(id: string): Promise<ResponseRecipeDto>;
-  getRecipeById(id: string): Promise<ResponseRecipeDto>;
+  getRecipeById(id: string, cond: ConditionDto): Promise<ResponseRecipeDto>;
   filterbyCategory(
     category: string,
     page: number,
@@ -33,17 +37,21 @@ export interface IRecipeUseCase {
   ): Promise<{ recipes: ResponseRecipeDto[]; totalCount: number }>;
   getAllRecipe(
     page: number,
-    limit: number
+    limit: number,
+    cond: ConditionDto
   ): Promise<{ recipes: ResponseRecipeDto[]; totalCount: number } | null>;
 }
 
 export interface IRecipeRepository {
+  countRecipeByCategory(category: string, userId: string): Promise<number>;
+  getRecipeByUserId(userId: string): Promise<Recipe[] | null>;
   getAllRecipe(
     page: number,
-    limit: number
+    limit: number,
+    cond: ConditionDto
   ): Promise<{ recipes: Recipe[]; totalCount: number } | null>;
   getRecipeByName(name: string): Promise<Recipe | null>;
-  getRecipeById(id: string): Promise<Recipe | null>;
+  getRecipeById(id: string, cond: ConditionDto): Promise<Recipe | null>;
   createRecipe(recipe: CreateRecipeDto, userId: string): Promise<Recipe>;
   updateRecipe(
     id: string,

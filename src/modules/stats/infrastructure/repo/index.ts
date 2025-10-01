@@ -6,6 +6,15 @@ import { PrismaClient } from "../../../../generated/prisma";
 export class StatsRepository implements IStatsRepository {
   constructor(private prisma: PrismaClient) {}
 
+  async updateRecipeId(id: string, newRecipeId: string): Promise<void> {
+    await this.prisma.stats.update({
+      where: {
+        recipeId: id,
+      },
+      data: { recipeId: newRecipeId },
+    });
+  }
+
   async getStateByRecipeId(recipeId: string): Promise<Stats | null> {
     return await this.prisma.stats.findFirst({
       where: {

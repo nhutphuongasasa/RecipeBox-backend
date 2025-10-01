@@ -6,7 +6,7 @@ export interface IFavoriteUseCase {
     favorite: CreateFavoriteDto,
     userId: string
   ): Promise<ResponseFavoriteDto>;
-  deleteFavorite(id: string): Promise<Favorite>;
+  deleteFavoriteByRecipeId(recipeId: string, userId: string): Promise<Favorite>;
   getFavoriteByRecipeId(recipeId: string): Promise<ResponseFavoriteDto[]>;
   getFavoriteByUserId(userId: string): Promise<ResponseFavoriteDto[]>;
 }
@@ -16,7 +16,7 @@ export interface IFavoriteRepository {
     favorite: CreateFavoriteDto,
     userId: string
   ): Promise<Favorite>;
-  deleteFavorite(id: string): Promise<Favorite>;
+  deleteFavoriteByRecipeId(recipeId: string, userId: string): Promise<Favorite>;
   getFavoriteByRecipeId(recipeId: string): Promise<Favorite[]>;
   getFavoriteByUserId(userId: string): Promise<Favorite[]>;
 }

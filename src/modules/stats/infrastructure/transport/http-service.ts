@@ -103,7 +103,7 @@ export class StatsHttpService {
         return res.status(400).json({ error: "Invalid stats ID" });
       }
 
-      const stats = await this.useCase.updateFavorites(id, action);
+      const stats = await this.useCase.updateFavoritesByRecipeId(id, action);
       res.status(200).json(stats);
     } catch (error) {
       next(error);

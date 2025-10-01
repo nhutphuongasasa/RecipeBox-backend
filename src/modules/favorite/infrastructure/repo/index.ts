@@ -10,18 +10,38 @@ export class FavoriteRepository implements IFavoriteRepository {
     favorite: CreateFavoriteDto,
     userId: string
   ): Promise<Favorite> {
-    return await this.prisma.favorite.create({
+    const result = await this.prisma.favorite.create({
       data: {
         recipeId: favorite.recipeId,
         userId,
       },
     });
+
+    return {
+      recipeId: result.recipeId,
+      userId: result.userId,
+      id: result.id,
+    };
   }
 
-  async deleteFavorite(id: string): Promise<Favorite> {
+  async deleteFavoriteByRecipeId(
+    recipeId: string,
+    userId: string
+  ): Promise<Favorite> {
+    const existingFavorite = await this.prisma.favorite.findFirst({
+      where: {
+        recipeId,
+        userId,
+      },
+    });
+
+    if (!existingFavorite) {
+      throw new Error("Favorite not found");
+    }
+
     const favorite = await this.prisma.favorite.delete({
       where: {
-        id,
+        id: existingFavorite.id,
       },
       include: {
         user: true,

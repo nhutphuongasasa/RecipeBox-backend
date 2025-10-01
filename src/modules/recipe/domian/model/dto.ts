@@ -62,7 +62,6 @@ export const ResponseRecipeDto = z.object({
     )
     .optional(),
   category: z.string().optional(),
-  //   step: z.array(z.string()).optional(),
   step: z
     .array(
       z.object({
@@ -73,10 +72,16 @@ export const ResponseRecipeDto = z.object({
     .optional(),
   comments: z.array(z.string()).optional(),
   ratings: z.array(z.string()).optional(),
-  favorites: z.array(z.string()).optional(),
+  hasFavorites: z.boolean().optional().nullable(),
   createdAt: z.date().optional(),
   updatedAt: z.date().optional(),
   totalCount: z.number().optional().nullable(),
 });
 
 export type ResponseRecipeDto = z.infer<typeof ResponseRecipeDto>;
+
+export const ConditionDto = z.object({
+  userId: z.string().optional().nullable(),
+});
+
+export type ConditionDto = z.infer<typeof ConditionDto>;

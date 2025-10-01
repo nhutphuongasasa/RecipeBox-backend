@@ -25,7 +25,10 @@ export class CommentUseCase implements ICommentUseCase {
     }
 
     const recipe = await this.recipeUseCase.getRecipeById(
-      commentRequest.recipeId
+      commentRequest.recipeId,
+      {
+        userId: commentRequest.userId,
+      }
     );
 
     if (!recipe) {
