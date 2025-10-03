@@ -3,3 +3,6 @@ openssl genrsa -out private.key 2048
 
 # Tạo public key từ private key
 openssl rsa -in private.key -pubout -out public.key
+
+#link truy cap
+https://recipebox-backend.onrender.com/
