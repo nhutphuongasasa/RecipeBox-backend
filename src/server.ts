@@ -17,14 +17,32 @@ const app = express();
 app.use(express.json());
 app.use(morgan("common"));
 // app.use(helmet());
-app.use(helmet.crossOriginResourcePolicy({ policy: "cross-origin" }));
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    contentSecurityPolicy: false,
+  })
+);
+
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://recipe-box-frontend-87ngi5v3l-phuongbt3232-gmailcoms-projects.vercel.app",
+];
+
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
   })
 );
 
+app.set("trust proxy", true);
 app.use("/api/user", setupUserRoutes());
 app.use("/api/recipe", setupRecipeRoutes());
 app.use("/api/step", setupStepRoutes());
@@ -46,7 +64,6 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
     return res.status(404).json({ message: err.message });
   }
 
-  // Error thường
   res.status(500).json({
     message: err.message || "Internal Server Error",
   });
