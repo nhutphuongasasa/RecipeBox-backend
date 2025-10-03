@@ -4,14 +4,14 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "tsc && cp -r src/generated dist/",
+    "build": "prisma generate && tsc && cpx \"src/generated/**\" dist/generated",
     "dev": "nodemon --watch src --ext ts --exec ts-node src/server.ts",
     "start": "node ./dist/server.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "module",
+  "type": "commonjs",
   "dependencies": {
     "@prisma/client": "^6.16.2",
     "@types/dotenv": "^6.1.1",
@@ -32,6 +32,7 @@
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/morgan": "^1.9.10",
+    "cpx": "^1.5.0",
     "prisma": "^6.16.2"
   }
 }

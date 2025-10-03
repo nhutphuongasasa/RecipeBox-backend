@@ -1,0 +1,52 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.recipeUseCase = exports.setupRecipeRoutes = void 0;
+const express_1 = __importDefault(require("express"));
+const repo_1 = require("./infrastructure/repo");
+const use_case_1 = require("./domian/use-case");
+const transport_1 = require("./infrastructure/transport");
+const prisma_1 = require("../../generated/prisma");
+const ingredient_1 = require("../ingredient");
+const category_1 = require("../category");
+const stats_1 = require("../stats");
+const user_1 = require("../user");
+const validate_1 = require("../../middleware/jwt/validate");
+const setupRecipeRoutes = () => {
+    const prisma = new prisma_1.PrismaClient();
+    const repository = new repo_1.RecipeRepository(prisma);
+    const IngredientUseCase = (0, ingredient_1.ingredientUseCase)();
+    const CategoryUseCase = (0, category_1.categoryUseCase)();
+    const StatsUseCase = (0, stats_1.statsUseCase)();
+    const UserUseCase = (0, user_1.userUseCase)();
+    const useCase = new use_case_1.RecipeUseCase(repository, IngredientUseCase, CategoryUseCase, StatsUseCase, UserUseCase);
+    const httpService = new transport_1.RecipeHttpService(useCase);
+    const router = express_1.default.Router();
+    router.get("/", httpService.getAllRecipe.bind(httpService));
+    router.get("/me", validate_1.validateToken, httpService.getRecipeByUserId.bind(httpService));
+    router.get("/count/:category", validate_1.validateToken, httpService.countRecipeByCategory.bind(httpService));
+    router.get("/top", validate_1.validateToken, httpService.topRecipeByFavorite.bind(httpService));
+    router.post("/", validate_1.validateToken, httpService.createRecipe.bind(httpService));
+    router.put("/:id", validate_1.validateToken, httpService.updateRecipe.bind(httpService));
+    router.delete("/:id", validate_1.validateToken, httpService.deleteRecipe.bind(httpService));
+    router.get("/:id", httpService.getRecipeById.bind(httpService));
+    router.get("/category/:category", httpService.filterbyCategory.bind(httpService));
+    router.get("/ingredient/:ingredient", httpService.filterbyIngredient.bind(httpService));
+    router.get("/name/:name", httpService.getRecipeByName.bind(httpService));
+    return router;
+};
+exports.setupRecipeRoutes = setupRecipeRoutes;
+const recipeUseCase = () => {
+    const prisma = new prisma_1.PrismaClient();
+    const repository = new repo_1.RecipeRepository(prisma);
+    const IngredientUseCase = (0, ingredient_1.ingredientUseCase)();
+    const CategoryUseCase = (0, category_1.categoryUseCase)();
+    const StatsUseCase = (0, stats_1.statsUseCase)();
+    const UserUseCase = (0, user_1.userUseCase)();
+    const useCase = new use_case_1.RecipeUseCase(repository, IngredientUseCase, CategoryUseCase, StatsUseCase, UserUseCase);
+    return useCase;
+};
+exports.recipeUseCase = recipeUseCase;
+//# sourceMappingURL=index.js.map
